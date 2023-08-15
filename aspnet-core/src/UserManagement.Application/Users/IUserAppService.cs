@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Abp.Application.Services;
 using Abp.Application.Services.Dto;
 using Microsoft.AspNetCore.Http;
+using UserManagement.Asposes.Dto;
 using UserManagement.Roles.Dto;
 using UserManagement.Users.Dto;
 
@@ -21,5 +22,6 @@ namespace UserManagement.Users
         Task<string> ImportFileAsync(string pathFile);
         Task<IDictionary<string,object>> UpdateMultiUser(List<ImportUserReqDto> input);
         Task<IDictionary<string, object>> CreateOrEditMultiUser(ImportUserReqDto input);
+        Task<FileDto> ExportFileExcel(ExcelInfoDto excelif);
     }
 }

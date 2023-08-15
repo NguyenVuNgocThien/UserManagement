@@ -11,6 +11,24 @@
                         {{ "Create" | localize }}
                     </a>
                 </div>
+                <div class="col-6">
+                    <h1></h1>
+                </div>
+                <div class="col-6 text-right">
+                    <a href="javascipt:;" for="fileInput" class="btn bg-blue">
+                        <i class="fa fa-plus-square">Import</i>
+                        <input type="file" id="fileInput" style="display: none;" (change)="onFileSelected($event)">
+                      </a>
+                </div>
+                <div class="col-6">
+                    <h1></h1>
+                </div>
+                <div class="col-6 text-right">
+                    <a href="javascript:;" class="btn bg-blue" (click)="exportExcel()">
+                        <i class="fa fa-plus-square"></i>
+                        {{ "Export" | localize }}
+                    </a>
+                </div>
             </div>
         </div>
     </section>

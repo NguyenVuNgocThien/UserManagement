@@ -30,6 +30,9 @@ using Aspose.Cells;
 using UserManagement.Helpper;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq.Dynamic.Core;
+using UserManagement.Asposes;
+using UserManagement.Asposes.Dto;
+using System.Globalization;
 
 namespace UserManagement.Users
 {
@@ -43,6 +46,7 @@ namespace UserManagement.Users
         private readonly IAbpSession _abpSession;
         private readonly LogInManager _logInManager;
         private readonly IWebHostEnvironment _hosttingEnviroment;
+        private readonly AsposesAppService _aspose;
         //private readonly UserManagementDbContext _dbContext;
 
         public UserAppService(
@@ -53,6 +57,7 @@ namespace UserManagement.Users
             IPasswordHasher<User> passwordHasher,
             IAbpSession abpSession,
             IWebHostEnvironment hosttingEnviroment,
+            AsposesAppService aspose,
             //UserManagementDbContext dbContext,
             LogInManager logInManager)
             : base(repository)
@@ -64,6 +69,7 @@ namespace UserManagement.Users
             _abpSession = abpSession;
             _logInManager = logInManager;
             _hosttingEnviroment = hosttingEnviroment;
+            _aspose = aspose;
             //_dbContext = dbContext;
         }
 
@@ -328,7 +334,7 @@ namespace UserManagement.Users
                         var user = new ImportUserReqDto();
                         user.LastName = worksheet.Cells[i, 0].Value.ToString();
                         user.FirstName = worksheet.Cells[i, 1].Value.ToString();
-                        user.DateofBirth = DateTime.Parse(worksheet.Cells[i, 2].Value.ToString());
+                        user.DateofBirth = (worksheet.Cells[i, 2].Value.ToString());
                         user.Address = worksheet.Cells[i, 3].Value.ToString();
                         user.PhoneNumber = worksheet.Cells[i, 4].Value.ToString();
                         user.CitizenIdentification = worksheet.Cells[i, 5].Value.ToString();
@@ -387,7 +393,9 @@ namespace UserManagement.Users
                     newname = (userName + count.ToString());
                     duplicatename = await _userManager.Users.FirstOrDefaultAsync(p => p.UserName == newname);
                 }
-                DateTime dateOfBirth = DateTime.Parse(input.DateofBirth.ToString());
+                string format = "dd/MM/yyyy";
+
+                DateTime dateOfBirth = DateTime.ParseExact(input.DateofBirth, format, CultureInfo.InvariantCulture);
 
 
 
@@ -403,12 +411,13 @@ namespace UserManagement.Users
                     CitizenIdentification = input.CitizenIdentification,
                     EmailAddress=input.Email,
                     Name=input.LastName+input.FirstName,
-                    Surname=""
+                    Surname="",
+                    LastModificationTime=DateTime.Now
                 };
 
-                var defaultPassword = $"{newname}@{input.DateofBirth.ToString("ddMMyyyy")}";
+                var defaultPassword = $"{newname}@{input.DateofBirth}";
                 var pass = char.ToUpper(defaultPassword[0]) + defaultPassword.Substring(1);
-                var result = await _userManager.CreateAsync(newUser, pass);
+                var result = await _userManager.CreateAsync(newUser, pass.Replace("/",""));
                 return new Dictionary<string, object>() { { "1", new { result = ObjectMapper.Map<User>(newUser) } } };
             }
             catch (Exception e)
@@ -417,6 +426,38 @@ namespace UserManagement.Users
                 return new Dictionary<string, object>() { { "0", new { result = "Error" } } };
             }
         }
+
+        public async Task<FileDto> ExportFileExcel(ExcelInfoDto excelif)
+        {
+            try
+            {
+                ReportInfoDto info = new ReportInfoDto();
+                info.PathName = excelif.PathName;
+                if (excelif.TypeExport == "FileTypeConst.Pdf")
+                {
+                    info.TypeExport = FileTypeConst.Pdf;
+                }
+                else
+                {
+                    info.TypeExport = FileTypeConst.Excel;
+                }
+                info.PathName = excelif.PathName;
+                info.StoreName = excelif.StoreName;
+                var file = await _aspose.GetReport_User(info);
+
+                FileDto fileExcel = new FileDto();
+                fileExcel.FileType = file.FileType;
+                fileExcel.FileToken = file.FileToken;
+                fileExcel.FileName = file.FileName;
+                return fileExcel;
+            }
+            catch(Exception e)
+            {
+                Logger.Error(e.Message, e);
+                return null;
+            }
+        }
+
     }
 }
 

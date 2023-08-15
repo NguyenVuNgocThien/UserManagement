@@ -1953,6 +1953,62 @@ export class UserServiceProxy {
     }
 
     /**
+     * @param body (optional) 
+     * @return Success
+     */
+    exportFileExcel(body: ExcelInfoDto | undefined): Observable<FileDto> {
+        let url_ = this.baseUrl + "/api/services/app/User/ExportFileExcel";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_ : any = {
+            body: content_,
+            observe: "response",
+            responseType: "blob",
+            headers: new HttpHeaders({
+                "Content-Type": "application/json-patch+json",
+                "Accept": "text/plain"
+            })
+        };
+
+        return this.http.request("post", url_, options_).pipe(_observableMergeMap((response_ : any) => {
+            return this.processExportFileExcel(response_);
+        })).pipe(_observableCatch((response_: any) => {
+            if (response_ instanceof HttpResponseBase) {
+                try {
+                    return this.processExportFileExcel(<any>response_);
+                } catch (e) {
+                    return <Observable<FileDto>><any>_observableThrow(e);
+                }
+            } else
+                return <Observable<FileDto>><any>_observableThrow(response_);
+        }));
+    }
+
+    protected processExportFileExcel(response: HttpResponseBase): Observable<FileDto> {
+        const status = response.status;
+        const responseBlob =
+            response instanceof HttpResponse ? response.body :
+            (<any>response).error instanceof Blob ? (<any>response).error : undefined;
+
+        let _headers: any = {}; if (response.headers) { for (let key of response.headers.keys()) { _headers[key] = response.headers.get(key); }}
+        if (status === 200) {
+            return blobToText(responseBlob).pipe(_observableMergeMap(_responseText => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = FileDto.fromJS(resultData200);
+            return _observableOf(result200);
+            }));
+        } else if (status !== 200 && status !== 204) {
+            return blobToText(responseBlob).pipe(_observableMergeMap(_responseText => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            }));
+        }
+        return _observableOf<FileDto>(<any>null);
+    }
+
+    /**
      * @param id (optional) 
      * @return Success
      */
@@ -2603,6 +2659,120 @@ export interface ICreateUserDto {
     password: string;
 }
 
+export class ExcelInfoDto implements IExcelInfoDto {
+    pathName: string | undefined;
+    storeName: string | undefined;
+    typeExport: string | undefined;
+    all: boolean;
+    parameters: ExcelParameter[] | undefined;
+
+    constructor(data?: IExcelInfoDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.pathName = _data["pathName"];
+            this.storeName = _data["storeName"];
+            this.typeExport = _data["typeExport"];
+            this.all = _data["all"];
+            if (Array.isArray(_data["parameters"])) {
+                this.parameters = [] as any;
+                for (let item of _data["parameters"])
+                    this.parameters.push(ExcelParameter.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): ExcelInfoDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ExcelInfoDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["pathName"] = this.pathName;
+        data["storeName"] = this.storeName;
+        data["typeExport"] = this.typeExport;
+        data["all"] = this.all;
+        if (Array.isArray(this.parameters)) {
+            data["parameters"] = [];
+            for (let item of this.parameters)
+                data["parameters"].push(item.toJSON());
+        }
+        return data; 
+    }
+
+    clone(): ExcelInfoDto {
+        const json = this.toJSON();
+        let result = new ExcelInfoDto();
+        result.init(json);
+        return result;
+    }
+}
+
+export interface IExcelInfoDto {
+    pathName: string | undefined;
+    storeName: string | undefined;
+    typeExport: string | undefined;
+    all: boolean;
+    parameters: ExcelParameter[] | undefined;
+}
+
+export class ExcelParameter implements IExcelParameter {
+    name: string | undefined;
+    value: any | undefined;
+
+    constructor(data?: IExcelParameter) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.name = _data["name"];
+            this.value = _data["value"];
+        }
+    }
+
+    static fromJS(data: any): ExcelParameter {
+        data = typeof data === 'object' ? data : {};
+        let result = new ExcelParameter();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        data["value"] = this.value;
+        return data; 
+    }
+
+    clone(): ExcelParameter {
+        const json = this.toJSON();
+        let result = new ExcelParameter();
+        result.init(json);
+        return result;
+    }
+}
+
+export interface IExcelParameter {
+    name: string | undefined;
+    value: any | undefined;
+}
+
 export class ExternalAuthenticateModel implements IExternalAuthenticateModel {
     authProvider: string;
     providerKey: string;
@@ -2754,6 +2924,57 @@ export class ExternalLoginProviderInfoModel implements IExternalLoginProviderInf
 export interface IExternalLoginProviderInfoModel {
     name: string | undefined;
     clientId: string | undefined;
+}
+
+export class FileDto implements IFileDto {
+    fileName: string;
+    fileType: string | undefined;
+    fileToken: string;
+
+    constructor(data?: IFileDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.fileName = _data["fileName"];
+            this.fileType = _data["fileType"];
+            this.fileToken = _data["fileToken"];
+        }
+    }
+
+    static fromJS(data: any): FileDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new FileDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["fileName"] = this.fileName;
+        data["fileType"] = this.fileType;
+        data["fileToken"] = this.fileToken;
+        return data; 
+    }
+
+    clone(): FileDto {
+        const json = this.toJSON();
+        let result = new FileDto();
+        result.init(json);
+        return result;
+    }
+}
+
+export interface IFileDto {
+    fileName: string;
+    fileType: string | undefined;
+    fileToken: string;
 }
 
 export class FlatPermissionDto implements IFlatPermissionDto {
@@ -2931,7 +3152,8 @@ export class ImportUserReqDto implements IImportUserReqDto {
     lastName: string | undefined;
     phoneNumber: string | undefined;
     address: string | undefined;
-    dateofBirth: moment.Moment;
+    email: string | undefined;
+    dateofBirth: string | undefined;
     citizenIdentification: string | undefined;
 
     constructor(data?: IImportUserReqDto) {
@@ -2950,7 +3172,8 @@ export class ImportUserReqDto implements IImportUserReqDto {
             this.lastName = _data["lastName"];
             this.phoneNumber = _data["phoneNumber"];
             this.address = _data["address"];
-            this.dateofBirth = _data["dateofBirth"] ? moment(_data["dateofBirth"].toString()) : <any>undefined;
+            this.email = _data["email"];
+            this.dateofBirth = _data["dateofBirth"];
             this.citizenIdentification = _data["citizenIdentification"];
         }
     }
@@ -2969,7 +3192,8 @@ export class ImportUserReqDto implements IImportUserReqDto {
         data["lastName"] = this.lastName;
         data["phoneNumber"] = this.phoneNumber;
         data["address"] = this.address;
-        data["dateofBirth"] = this.dateofBirth ? this.dateofBirth.toISOString() : <any>undefined;
+        data["email"] = this.email;
+        data["dateofBirth"] = this.dateofBirth;
         data["citizenIdentification"] = this.citizenIdentification;
         return data; 
     }
@@ -2988,7 +3212,8 @@ export interface IImportUserReqDto {
     lastName: string | undefined;
     phoneNumber: string | undefined;
     address: string | undefined;
-    dateofBirth: moment.Moment;
+    email: string | undefined;
+    dateofBirth: string | undefined;
     citizenIdentification: string | undefined;
 }
 

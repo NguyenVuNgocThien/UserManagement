@@ -1,4 +1,4 @@
-import { Component, Injector } from '@angular/core';
+import { Component, ElementRef, Injector, ViewChild } from '@angular/core';
 import { finalize } from 'rxjs/operators';
 import { BsModalService, BsModalRef } from 'ngx-bootstrap/modal';
 import { appModuleAnimation } from '@shared/animations/routerTransition';
@@ -9,11 +9,15 @@ import {
 import {
   UserServiceProxy,
   UserDto,
-  UserDtoPagedResultDto
+  UserDtoPagedResultDto,
+  ExcelInfoDto,
+  FileDto
 } from '@shared/service-proxies/service-proxies';
 import { CreateUserDialogComponent } from './create-user/create-user-dialog.component';
 import { EditUserDialogComponent } from './edit-user/edit-user-dialog.component';
 import { ResetPasswordDialogComponent } from './reset-password/reset-password.component';
+import { HttpClient, HttpHeaders, HttpRequest } from '@angular/common/http';
+import { AppConsts } from '@shared/AppConsts';
 
 class PagedUsersRequestDto extends PagedRequestDto {
   keyword: string;
@@ -29,13 +33,21 @@ export class UsersComponent extends PagedListingComponentBase<UserDto> {
   keyword = '';
   isActive: boolean | null;
   advancedFiltersVisible = false;
+  uploadUrl:string;
+  selectedFile: File;
+  @ViewChild('fileInput') fileInput: ElementRef;
+
+  //@ViewChild('ExcelFileUpload',{static:false}) excelFileUpload:FileUpload;
 
   constructor(
     injector: Injector,
     private _userService: UserServiceProxy,
-    private _modalService: BsModalService
+    private _httpClient:HttpClient,
+    private _modalService: BsModalService,
+    //private _fileDownloadService:FileDownloadService
   ) {
     super(injector);
+    this.uploadUrl=AppConsts.remoteServiceBaseUrl+'/api/services/app/User/GetFileImport';
   }
 
   createUser(): void {
@@ -130,5 +142,58 @@ export class UsersComponent extends PagedListingComponentBase<UserDto> {
     createOrEditUserDialog.content.onSave.subscribe(() => {
       this.refresh();
     });
+  }
+  
+  onFileSelected(event: any): void {
+    this.selectedFile = event.target.files[0];
+    abp.message.confirm(
+      this.l('UserImportMessage'),
+      undefined,
+      (result: boolean) => {
+        if (result) {
+          this.uploadFile(this.selectedFile);
+        }
+      }
+    );
+    }
+  openFileBrowser() {
+      this.fileInput.nativeElement.click();
+    }
+  uploadFile(file:File) {
+    if (!file) {
+      console.error('No file selected');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    this._httpClient.post<string>(this.uploadUrl, formData).subscribe(
+      result => {
+        console.log('Upload successful');
+        console.log('Response:', result);
+        const fileInput = document.getElementById('fileInput') as HTMLInputElement;
+        fileInput.value = '';
+
+        this.refresh();
+      },
+      error => {
+        console.error('Upload failed:', error);
+      }
+    );
+  }
+  downloadTempFile(file:FileDto){
+    const url=AppConsts.remoteServiceBaseUrl+'/File/DownloadTempFile?fileType='+file.fileType+'&fileToken='+file.fileToken+'&fileName='+file.fileName;
+    console.log(AppConsts.remoteServiceBaseUrl);
+    location.href=url;
+  }
+  exportExcel():void{
+    let itemFilter=new ExcelInfoDto();
+    itemFilter.storeName="dbo.USER_DT"
+    itemFilter.pathName="/wwwroot/ExcelExport/ListUserInfo.xlsx"
+    this._userService.exportFileExcel(itemFilter).subscribe((res)=>{
+      this.downloadTempFile(res);
+      this.refresh();
+    })
   }
 }

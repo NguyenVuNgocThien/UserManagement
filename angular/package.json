@@ -34,7 +34,6 @@
     "ngx-bootstrap": "^5.6.1",
     "ngx-pagination": "^5.0.0",
     "push.js": "1.0.12",
-    "rxjs": "^6.4.0",
     "sweetalert2": "^10.15.6",
     "ts-helpers": "^1.1.2",
     "tslib": "^2.0.0",
